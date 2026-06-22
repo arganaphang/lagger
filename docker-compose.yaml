@@ -40,6 +40,7 @@ services:
   tempo:
     image: grafana/tempo:latest
     container_name: tempo
+    user: root
     command: ["-config.file=/etc/tempo.yaml"]
     ports:
       - "3200:3200" # Tempo query API / used by Grafana datasource
