@@ -1,0 +1,17 @@
+{
+  "name": "effectapp",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@effect/platform": "^0.96.2",
+    "@effect/platform-bun": "^0.90.0",
+    "effect": "^3.21.4"
+  }
+}

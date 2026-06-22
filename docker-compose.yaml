@@ -1,0 +1,13 @@
+services:
+  goapp:
+    build:
+      context: ./goapp
+      dockerfile: Dockerfile
+    ports:
+      - 8001:8001
+  effectapp:
+    build:
+      context: ./effectapp
+      dockerfile: Dockerfile
+    ports:
+      - 8002:8002
