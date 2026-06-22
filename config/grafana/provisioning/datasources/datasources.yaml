@@ -1,0 +1,49 @@
+# Auto-provisions all three backends as Grafana datasources on startup, wired
+# together so you can pivot between signals (trace -> logs, trace -> metrics,
+# metric exemplar -> trace) instead of treating them as three separate tools.
+apiVersion: 1
+
+datasources:
+  - name: Mimir
+    type: prometheus
+    uid: mimir
+    access: proxy
+    url: http://mimir:9009/prometheus
+    isDefault: true
+    jsonData:
+      httpMethod: GET
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: tempo
+
+  - name: Loki
+    type: loki
+    uid: loki
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      derivedFields:
+        # Any log line containing a traceId field gets a clickable link to the
+        # matching trace in Tempo. dice-service and gateway-service both emit this.
+        - datasourceUid: tempo
+          matcherRegex: '"?trace_?id"?[=:]\s*"?([0-9a-fA-F]+)"?'
+          name: TraceID
+          url: "$${__value.raw}"
+
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    access: proxy
+    url: http://tempo:3200
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: loki
+        spanStartTimeShift: "-5m"
+        spanEndTimeShift: "5m"
+        filterByTraceID: true
+      tracesToMetrics:
+        datasourceUid: mimir
+      serviceMap:
+        datasourceUid: mimir
+      nodeGraph:
+        enabled: true

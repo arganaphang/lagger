@@ -1,0 +1,14 @@
+# Tells Grafana to load any dashboard JSON files dropped into this folder.
+# We don't ship a pre-built dashboard on purpose (see docs/05-exercises.md) -
+# building your own RED-metrics dashboard for gateway-service is exercise #1.
+apiVersion: 1
+
+providers:
+  - name: default
+    orgId: 1
+    folder: ""
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards

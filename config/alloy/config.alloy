@@ -1,0 +1,95 @@
+// Grafana Alloy is the single collection point for this whole stack: both
+// dice-service (Go) and gateway-service (TypeScript/Effect) send ALL THREE
+// signals here over OTLP, and Alloy fans each signal out to the right backend.
+//
+// Pipeline shape:
+//
+//   otelcol.receiver.otlp  -->  otelcol.processor.batch  -->  per-signal exporter
+//                                                              |- traces  -> Tempo
+//                                                              |- metrics -> Mimir (via prometheus.remote_write)
+//                                                              |- logs    -> Loki
+//
+// You can watch this graph live (and see data flowing through it) at
+// http://localhost:12345 once the stack is up.
+
+// ---------------------------------------------------------------------------
+// 1. Receive OTLP from the apps.
+// ---------------------------------------------------------------------------
+otelcol.receiver.otlp "default" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+
+  output {
+    traces  = [otelcol.processor.batch.default.input]
+    metrics = [otelcol.processor.batch.default.input]
+    logs    = [otelcol.processor.batch.default.input]
+  }
+}
+
+// Batch everything before exporting - much cheaper than exporting span-by-span.
+otelcol.processor.batch "default" {
+  output {
+    traces  = [otelcol.exporter.otlp.tempo.input]
+    metrics = [otelcol.exporter.prometheus.mimir.input]
+    logs    = [otelcol.exporter.loki.loki.input]
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 2. Traces -> Tempo
+// ---------------------------------------------------------------------------
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "tempo:4317"
+    tls {
+      insecure = true
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 3. Metrics -> Mimir
+//    OTLP metrics get translated into Prometheus's data model, then remote-written.
+// ---------------------------------------------------------------------------
+otelcol.exporter.prometheus "mimir" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+}
+
+prometheus.remote_write "mimir" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4. Logs -> Loki
+// ---------------------------------------------------------------------------
+otelcol.exporter.loki "loki" {
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 5. Bonus: self-monitor the stack itself.
+//    Scrape Mimir/Loki/Tempo/Alloy's own /metrics endpoints so you have
+//    infrastructure metrics to look at too, not just application metrics.
+// ---------------------------------------------------------------------------
+prometheus.scrape "infra" {
+  targets = [
+    {"__address__" = "mimir:9009", job = "mimir"},
+    {"__address__" = "tempo:3200", job = "tempo"},
+    {"__address__" = "loki:3100", job = "loki"},
+    {"__address__" = "localhost:12345", job = "alloy"},
+  ]
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+}

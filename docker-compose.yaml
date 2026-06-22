@@ -5,8 +5,70 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor
     volumes:
-      - grafana-storage:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - mimir
+      - loki
+      - tempo
+  mimir:
+    image: grafana/mimir:latest
+    container_name: mimir
+    command: ["-config.file=/etc/mimir.yaml"]
+    ports:
+      - "9009:9009"
+    volumes:
+      - ./config/mimir/mimir.yaml:/etc/mimir.yaml:ro
+      - mimir-data:/tmp/mimir
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    command: ["-config.file=/etc/loki.yaml"]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./config/loki/loki.yaml:/etc/loki.yaml:ro
+      - loki-data:/loki
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    command: ["-config.file=/etc/tempo.yaml"]
+    ports:
+      - "3200:3200" # Tempo query API / used by Grafana datasource
+    volumes:
+      - ./config/tempo/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/tmp/tempo
+    depends_on:
+      - mimir
+
+  alloy:
+    image: grafana/alloy:latest
+    container_name: alloy
+    command:
+      [
+        "run",
+        "--server.http.listen-addr=0.0.0.0:12345",
+        "--storage.path=/var/lib/alloy/data",
+        "/etc/alloy/config.alloy",
+      ]
+    ports:
+      - "4317:4317" # OTLP gRPC - both app services send here
+      - "4318:4318" # OTLP HTTP
+      - "12345:12345" # Alloy UI (component graph, debugging)
+    volumes:
+      - ./config/alloy/config.alloy:/etc/alloy/config.alloy:ro
+    depends_on:
+      - tempo
+      - mimir
+      - loki
   goapp:
     build:
       context: goapp
@@ -25,4 +87,7 @@ services:
       - grafana
 
 volumes:
-  grafana-storage: {}
+  grafana-data:
+  mimir-data:
+  loki-data:
+  tempo-data:

@@ -1,0 +1,87 @@
+# Minimal single-binary Tempo config for local learning use.
+# Full reference: https://grafana.com/docs/tempo/latest/configuration/
+#
+# Tempo stores traces. Alloy forwards OTLP traces here. Tempo also derives RED
+# (Rate/Errors/Duration) metrics and service-graph metrics directly from the traces it
+# ingests, and remote-writes those metrics straight into Mimir - so a chunk of your
+# "metrics" story actually comes from your traces for free.
+
+stream_over_http_enabled: true
+
+server:
+  http_listen_port: 3200
+
+# The distributor accepts incoming spans. We only actually use the OTLP receiver
+# (that's what Alloy and the OTel SDKs speak), but the others are listed for reference.
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        http:
+          endpoint: "0.0.0.0:4318"
+        grpc:
+          endpoint: "0.0.0.0:4317"
+
+# Tempo's live-store holds recently-ingested traces in memory/WAL before flushing
+# completed blocks to storage (this replaces the older "ingester" component).
+live_store:
+  max_trace_idle: 10s
+  max_block_duration: 5m
+  max_block_bytes: 1_000_000
+
+backend_scheduler:
+  provider:
+    compaction:
+      compaction:
+        compaction_window: 1h
+        max_block_bytes: 100_000_000
+        block_retention: 1h # short retention - this is a throwaway learning stack
+        compacted_block_retention: 10m
+
+storage:
+  trace:
+    backend: local
+    block:
+      bloom_filter_false_positive: .05
+    wal:
+      path: /tmp/tempo/wal
+    local:
+      path: /tmp/tempo/blocks
+    pool:
+      max_workers: 100
+      queue_depth: 10000
+
+# This is the "metrics from traces" feature mentioned above.
+metrics_generator:
+  processor:
+    span_metrics:
+      dimensions:
+        - http.method
+        - http.target
+        - http.status_code
+    service_graphs:
+      dimensions:
+        - http.method
+        - http.target
+        - http.status_code
+  registry:
+    collection_interval: 5s
+    external_labels:
+      source: tempo
+  storage:
+    path: /tmp/tempo/generator/wal
+    remote_write:
+      - url: http://mimir:9009/api/v1/push
+        send_exemplars: true
+
+overrides:
+  defaults:
+    compaction:
+      block_retention: 1h
+      compaction_window: 1h
+    metrics_generator:
+      processors: [service-graphs, span-metrics]
+      generate_native_histograms: both
+
+usage_report:
+  reporting_enabled: false

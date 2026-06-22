@@ -1,0 +1,64 @@
+# Minimal single-binary ("monolithic mode") Mimir config for local learning use.
+# Full reference: https://grafana.com/docs/mimir/latest/configure/configuration-parameters/
+#
+# Mimir is a long-term, horizontally-scalable storage backend for Prometheus-style
+# metrics. Here it plays the "metrics" leg of the stack: Alloy remote-writes into it,
+# and Tempo also remote-writes the RED/service-graph metrics it derives from traces
+# into it (see tempo/tempo.yaml). Grafana then queries it like it would query Prometheus.
+
+# Disable multi-tenancy and restrict to a single tenant - simplest setup for local use.
+multitenancy_enabled: false
+
+# Where metric blocks (TSDB) actually live. In production you'd point this at S3/GCS;
+# for local learning, the filesystem is perfectly fine.
+blocks_storage:
+  backend: filesystem
+  bucket_store:
+    sync_dir: /tmp/mimir/tsdb-sync
+  filesystem:
+    dir: /tmp/mimir/data/tsdb
+  tsdb:
+    dir: /tmp/mimir/tsdb
+
+compactor:
+  data_dir: /tmp/mimir/compactor
+  sharding_ring:
+    kvstore:
+      store: memberlist
+
+distributor:
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: memberlist
+
+ingester:
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: memberlist
+    # A single ingester instance, so a replication factor of 1.
+    # Production deployments should run >=3 ingesters with replication_factor: 3.
+    replication_factor: 1
+
+ruler_storage:
+  backend: filesystem
+  filesystem:
+    dir: /tmp/mimir/rules
+
+server:
+  http_listen_port: 9009
+  log_level: info
+
+store_gateway:
+  sharding_ring:
+    replication_factor: 1
+
+limits:
+  # Enable exemplar storage - this is what lets you click a point on a metric
+  # graph in Grafana and jump straight to the trace that produced it.
+  max_global_exemplars_per_user: 100000
+  ingestion_rate: 30000
+  # Lets Alloy/clients push data using the OTLP metrics format directly.
+  otel_metric_suffixes_enabled: true
+  native_histograms_ingestion_enabled: true
