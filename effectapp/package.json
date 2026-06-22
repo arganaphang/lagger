@@ -10,8 +10,16 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@effect/opentelemetry": "^0.63.0",
     "@effect/platform": "^0.96.2",
     "@effect/platform-bun": "^0.90.0",
+    "@opentelemetry/exporter-logs-otlp-http": "^0.219.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.219.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.219.0",
+    "@opentelemetry/resources": "^2.8.0",
+    "@opentelemetry/sdk-logs": "^0.219.0",
+    "@opentelemetry/sdk-metrics": "^2.8.0",
+    "@opentelemetry/semantic-conventions": "^1.41.1",
     "effect": "^3.21.4"
   }
 }

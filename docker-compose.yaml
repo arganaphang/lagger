@@ -76,16 +76,20 @@ services:
       dockerfile: Dockerfile
     ports:
       - 8001:8001
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=alloy:4317
     depends_on:
-      - grafana
+      - alloy
   effectapp:
     build:
       context: effectapp
       dockerfile: Dockerfile
     ports:
       - 8002:8002
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318
     depends_on:
-      - grafana
+      - alloy
 
 volumes:
   grafana-data:
