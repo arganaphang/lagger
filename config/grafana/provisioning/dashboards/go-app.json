@@ -1,0 +1,244 @@
+{
+  "uid": "go-app",
+  "title": "Go App",
+  "tags": ["go-app"],
+  "timezone": "browser",
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "time": { "from": "now-30m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Request Rate",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "blue" }] }
+        }
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "mimir" },
+        "expr": "sum(rate(http_server_request_duration_seconds_count{job=\"go-app\"}[1m]))",
+        "legendFormat": "req/s"
+      }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "P95 Latency",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 0.1, "color": "yellow" },
+              { "value": 0.5, "color": "red" }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "mimir" },
+        "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{job=\"go-app\"}[1m])))",
+        "legendFormat": "p95"
+      }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Error Rate",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 0.01, "color": "yellow" },
+              { "value": 0.05, "color": "red" }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "mimir" },
+        "expr": "sum(rate(http_server_request_duration_seconds_count{job=\"go-app\", http_response_status_code=~\"5..\"}[1m])) / sum(rate(http_server_request_duration_seconds_count{job=\"go-app\"}[1m]))",
+        "legendFormat": "error rate"
+      }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Total Rolls",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "purple" }] }
+        }
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "mimir" },
+        "expr": "sum(roll_count_total{job=\"go-app\"})",
+        "legendFormat": "total"
+      }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Request Rate by Route",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "mimir" },
+        "expr": "sum by (http_route) (rate(http_server_request_duration_seconds_count{job=\"go-app\"}[1m]))",
+        "legendFormat": "{{http_route}}"
+      }]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Latency Percentiles",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 5 } }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "expr": "histogram_quantile(0.50, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{job=\"go-app\"}[1m])))",
+          "legendFormat": "p50 {{http_route}}"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "expr": "histogram_quantile(0.95, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{job=\"go-app\"}[1m])))",
+          "legendFormat": "p95 {{http_route}}"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "expr": "histogram_quantile(0.99, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{job=\"go-app\"}[1m])))",
+          "legendFormat": "p99 {{http_route}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "bargauge",
+      "title": "Roll Result Distribution",
+      "gridPos": { "x": 0, "y": 12, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "minVizWidth": 10,
+        "minVizHeight": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" },
+          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "blue" }] }
+        }
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "mimir" },
+        "expr": "sort_desc(sum by (roll_result) (roll_count_total{job=\"go-app\"}))",
+        "legendFormat": "🎲 {{roll_result}}"
+      }]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Roll Rate over Time",
+      "gridPos": { "x": 8, "y": 12, "w": 16, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "fieldConfig": {
+        "defaults": { "unit": "ops", "custom": { "lineWidth": 2, "fillOpacity": 10, "stacking": { "mode": "normal" } } }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "mimir" },
+        "expr": "sum by (roll_result) (rate(roll_count_total{job=\"go-app\"}[1m]))",
+        "legendFormat": "🎲 {{roll_result}}"
+      }]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Span Calls Rate (from Tempo)",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "fieldConfig": {
+        "defaults": { "unit": "ops", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "mimir" },
+        "expr": "sum by (span_name) (rate(traces_spanmetrics_calls_total{service=\"go-app\"}[1m]))",
+        "legendFormat": "{{span_name}}"
+      }]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Span P95 Latency (from Tempo)",
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "fieldConfig": {
+        "defaults": { "unit": "ms", "custom": { "lineWidth": 2, "fillOpacity": 5 } }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "mimir" },
+        "expr": "histogram_quantile(0.95, sum by (le, span_name) (rate(traces_spanmetrics_latency_bucket{service=\"go-app\"}[1m])))",
+        "legendFormat": "p95 {{span_name}}"
+      }]
+    },
+    {
+      "id": 11,
+      "type": "logs",
+      "title": "Logs",
+      "gridPos": { "x": 0, "y": 28, "w": 24, "h": 10 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending"
+      },
+      "targets": [{
+        "datasource": { "type": "loki", "uid": "loki" },
+        "expr": "{service_name=\"go-app\"}",
+        "legendFormat": ""
+      }]
+    }
+  ]
+}

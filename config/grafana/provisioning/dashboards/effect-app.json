@@ -1,0 +1,241 @@
+{
+  "uid": "effect-app",
+  "title": "Effect App",
+  "tags": ["effect-app"],
+  "timezone": "browser",
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "time": { "from": "now-30m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Active Fibers",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "blue" }] }
+        }
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "mimir" },
+        "expr": "effect_fiber_active{job=\"effect-app\"}",
+        "legendFormat": "active"
+      }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Fiber Start Rate",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "value": null, "color": "green" }] }
+        }
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "mimir" },
+        "expr": "rate(effect_fiber_started_total{job=\"effect-app\"}[1m])",
+        "legendFormat": "fibers/s"
+      }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Fiber Success Rate",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "red" },
+              { "value": 0.95, "color": "yellow" },
+              { "value": 0.99, "color": "green" }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "mimir" },
+        "expr": "rate(effect_fiber_successes_total{job=\"effect-app\"}[1m]) / rate(effect_fiber_started_total{job=\"effect-app\"}[1m])",
+        "legendFormat": "success rate"
+      }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "P95 Fiber Lifetime",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 100, "color": "yellow" },
+              { "value": 500, "color": "red" }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "mimir" },
+        "expr": "histogram_quantile(0.95, sum by (le) (rate(effect_fiber_lifetimes_milliseconds_bucket{job=\"effect-app\"}[1m])))",
+        "legendFormat": "p95"
+      }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Active Fibers over Time",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 20 } }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "mimir" },
+        "expr": "effect_fiber_active{job=\"effect-app\"}",
+        "legendFormat": "active fibers"
+      }]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Fiber Lifetime Percentiles",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "fieldConfig": {
+        "defaults": { "unit": "ms", "custom": { "lineWidth": 2, "fillOpacity": 5 } }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(effect_fiber_lifetimes_milliseconds_bucket{job=\"effect-app\"}[1m])))",
+          "legendFormat": "p50"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(effect_fiber_lifetimes_milliseconds_bucket{job=\"effect-app\"}[1m])))",
+          "legendFormat": "p95"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(effect_fiber_lifetimes_milliseconds_bucket{job=\"effect-app\"}[1m])))",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Fiber Throughput",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "fieldConfig": {
+        "defaults": { "unit": "ops", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "expr": "rate(effect_fiber_started_total{job=\"effect-app\"}[1m])",
+          "legendFormat": "started"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "mimir" },
+          "expr": "rate(effect_fiber_successes_total{job=\"effect-app\"}[1m])",
+          "legendFormat": "succeeded"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Span Calls Rate (from Tempo)",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "fieldConfig": {
+        "defaults": { "unit": "ops", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "mimir" },
+        "expr": "sum by (span_name) (rate(traces_spanmetrics_calls_total{service=\"effect-app\"}[1m]))",
+        "legendFormat": "{{span_name}}"
+      }]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Span P95 Latency (from Tempo)",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "fieldConfig": {
+        "defaults": { "unit": "ms", "custom": { "lineWidth": 2, "fillOpacity": 5 } }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "mimir" },
+        "expr": "histogram_quantile(0.95, sum by (le, span_name) (rate(traces_spanmetrics_latency_bucket{service=\"effect-app\"}[1m])))",
+        "legendFormat": "p95 {{span_name}}"
+      }]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "HTTP Server Span Rate",
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "fieldConfig": {
+        "defaults": { "unit": "ops", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "mimir" },
+        "expr": "sum by (span_name, status_code) (rate(traces_spanmetrics_calls_total{service=\"effect-app\", span_kind=\"SPAN_KIND_SERVER\"}[1m]))",
+        "legendFormat": "{{span_name}} ({{status_code}})"
+      }]
+    },
+    {
+      "id": 11,
+      "type": "logs",
+      "title": "Logs",
+      "gridPos": { "x": 0, "y": 28, "w": 24, "h": 10 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending"
+      },
+      "targets": [{
+        "datasource": { "type": "loki", "uid": "loki" },
+        "expr": "{service_name=\"effect-app\"}",
+        "legendFormat": ""
+      }]
+    }
+  ]
+}
